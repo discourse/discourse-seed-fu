@@ -88,21 +88,19 @@ module SeedFu
         if @model_class.connection.adapter_name == "PostgreSQL" or @model_class.connection.adapter_name == "PostGIS"
           return if @model_class.primary_key.nil? || @model_class.sequence_name.nil?
 
-          quoted_id       = @model_class.connection.quote_column_name(@model_class.primary_key)
-          sequence = @model_class.sequence_name
+          max_seeded_id = @data.filter_map { |d| d["id"] }.max
+          seq = @model_class.connection.execute(<<~SQL)
+          SELECT last_value
+          FROM #{@model_class.sequence_name}
+          SQL
+          last_seq_value = seq.first["last_value"]
 
-          # TODO postgresql_version was made public in Rails 5.0.0, remove #send when support for earlier versions are dropped
-          if @model_class.connection.send(:postgresql_version) >= 100000
-            sql =<<-EOS
-              SELECT setval('#{sequence}', (SELECT GREATEST(MAX(#{quoted_id})+(SELECT seqincrement FROM pg_sequence WHERE seqrelid = '#{sequence}'::regclass), (SELECT seqmin FROM pg_sequence WHERE seqrelid = '#{sequence}'::regclass)) FROM #{@model_class.quoted_table_name}), false)
-            EOS
+          if max_seeded_id && last_seq_value < max_seeded_id
+            # Update the sequence to start from the highest existing id
+            @model_class.connection.reset_pk_sequence!(@model_class.table_name)
           else
-            sql =<<-EOS
-              SELECT setval('#{sequence}', (SELECT GREATEST(MAX(#{quoted_id})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{@model_class.quoted_table_name}), false)
-            EOS
+            # The sequence is already higher than any of our seeded ids - better not touch it
           end
-
-          @model_class.connection.execute sql
         end
       end
   end

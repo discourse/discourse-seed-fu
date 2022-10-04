@@ -153,19 +153,26 @@ describe SeedFu::Seeder do
   end
 
   if ENV["DB"] == "postgresql"
-    it "should update the primary key sequence after a records have been seeded" do
-      id = SeededModel.connection.select_value("SELECT currval('seeded_models_id_seq')").to_i + 1
-      SeededModel.seed(:title => "Foo", :id => id)
-
-      expect { SeededModel.create!(:title => "Bla") }.not_to raise_error
-    end
-
     it "should not raise error when there is no primary key specified" do
       expect { SeededModelNoPrimaryKey.seed(:id => "Id") }.not_to raise_error
     end
 
     it "should not raise error when there is primary key without sequence" do
       expect { SeededModelNoSequence.seed(:id => "Id") }.not_to raise_error
+    end
+
+    it "should not modify a sequence on an existing table" do
+      u = SeededModel.create!(login: "test1", title: "foo")
+      uid1 = u.id
+      u.destroy
+
+      SeedFu.quiet = true
+      SeedFu.seed
+
+      # Ensure sequence was not reset. A new user should have
+      # id one greater than the last user
+      u2 = SeededModel.create!(login: "test1", title: "bar")
+      expect(u2.id).to eq(uid1 + 1)
     end
   end
 
