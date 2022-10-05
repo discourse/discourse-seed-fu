@@ -5,7 +5,7 @@ $:.unshift lib unless $:.include?(lib)
 require 'seed-fu/version'
 
 Gem::Specification.new do |s|
-  s.name        = "seed-fu"
+  s.name        = "discourse-seed-fu"
   s.version     = SeedFu::VERSION
   s.platform    = Gem::Platform::RUBY
   s.licenses    = ['MIT']

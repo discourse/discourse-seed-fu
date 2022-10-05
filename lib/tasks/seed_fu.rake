@@ -1,4 +1,4 @@
-require 'seed-fu'
+require 'discourse-seed-fu'
 
 namespace :db do
   desc <<-EOS
